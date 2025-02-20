@@ -1,9 +1,11 @@
 #include <Arduino.h>
+#include <EEPROM.h>
+
 
 #include <WiFi.h>
 
-const char* ssid = "Tu_SSID";
-const char* password = "Tu_PASSWORD"; 
+String ssid = "Tu_SSID_INICIAL";
+String password = "Tu_PASSWORD_INICIAL"; 
 
 WiFiServer server(7777); 
 
@@ -17,6 +19,23 @@ enum Estado {
 };
 
 Estado estadoActual = SUCIO; // Estado inicial
+
+// Guardar datos de red en la memoria
+void guardarCredenciales(String ssid, String password) {
+  EEPROM.begin(512);
+  EEPROM.put(0, ssid);
+  EEPROM.put(64, password);
+  EEPROM.commit();
+  EEPROM.end();
+}
+
+
+void cargarCredenciales() {
+  EEPROM.begin(512);
+  EEPROM.get(0, ssid);
+  EEPROM.get(64, password);
+  EEPROM.end();
+}
 
 // Función para cambiar el estado (ejemplo, se puede modificar según lógica)
 void cambiarEstado(Estado nuevoEstado) {
@@ -49,6 +68,25 @@ bool iniciar() {
   return true;
 }
 
+void actualizarWiFi(String nuevoSSID, String nuevaPassword) {
+  ssid = nuevoSSID;
+  password = nuevaPassword;
+
+  // Desconectar y reconectar con las nuevas credenciales
+  WiFi.disconnect();
+  WiFi.begin(ssid.c_str(), password.c_str());
+
+  Serial.println("Reconectando a la nueva red Wi-Fi...");
+  while (WiFi.status() != WL_CONNECTED) {
+      delay(1000);
+      Serial.println("Conectando a Wi-Fi...");
+  }
+
+  Serial.println("Conectado a la nueva red Wi-Fi");
+  Serial.print("Dirección IP: ");
+  Serial.println(WiFi.localIP());
+}
+
 void setup() {
     Serial.begin(115200);
     WiFi.begin(ssid, password);
@@ -60,6 +98,8 @@ void setup() {
     }
 
     Serial.println("Conectado a la red Wi-Fi");
+    Serial.print("Dirección IP: ");
+    Serial.println(WiFi.localIP());
     server.begin();
     Serial.println("Esperando conexión...");
 }
@@ -79,6 +119,7 @@ void loop() {
 
         Serial.println("Mensaje recibido: " + message);
 
+        // Comando para actualizar estado de la aspiradora
         if (message == "U") {
             char estado = obtenerEstado();
             client.println(estado);
@@ -86,6 +127,7 @@ void loop() {
             Serial.println(estado);
         }
 
+        // Comando para detener la aspiradora
         if (message == "S") {
           if (detener())
           {
@@ -94,6 +136,7 @@ void loop() {
           }
         }
 
+        // Comando para reiniciar la aspiradora
         if (message == "R") {
           if (reiniciar())
             {
@@ -103,6 +146,7 @@ void loop() {
 
         }
 
+        // Comando para iniciar la aspiradora
         if (message == "I") {
           if (iniciar())
               {
@@ -110,6 +154,24 @@ void loop() {
                 Serial.println("T");
               }
         }
+
+        // Comando para actualizar el SSID y la contraseña (formato: "W:SSID:CONTRASEÑA")
+        if (message.startsWith("W:")) {
+          int separatorIndex1 = message.indexOf(':', 2); // Buscar el primer separador
+          int separatorIndex2 = message.indexOf(':', separatorIndex1 + 1); // Buscar el segundo separador
+
+          if (separatorIndex1 != -1 && separatorIndex2 != -1) {
+              String nuevoSSID = message.substring(2, separatorIndex1);
+              String nuevaPassword = message.substring(separatorIndex1 + 1);
+
+              actualizarWiFi(nuevoSSID, nuevaPassword);
+              client.println("T"); // Confirmar que se actualizó
+              Serial.println("SSID y contraseña actualizados");
+          } else {
+              client.println("F"); // Formato incorrecto
+              Serial.println("Formato incorrecto para actualizar WiFi");
+          }
+      }
         
         client.stop();
         Serial.println("Cliente desconectado");
