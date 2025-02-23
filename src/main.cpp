@@ -4,8 +4,8 @@
 
 #include <WiFi.h>
 
-String ssid = "Tu_SSID_INICIAL";
-String password = "Tu_PASSWORD_INICIAL"; 
+String ssid = "";
+String password = ""; 
 
 WiFiServer server(7777); 
 
@@ -55,16 +55,25 @@ void obtenerEstadoActual() {
 
 bool detener() {
   // Detener el proceso de limpieza
+
+  //Prueba
+  Serial.println("Aspiradora detenida");
   return true;
 }
 
 bool reiniciar() {
   // Reiniciar el proceso
+
+  //Prueba
+  Serial.println("Aspiradora reiniciada");
   return true;
 }
 
 bool iniciar() {
   // Iniciar el proceso
+
+  //Prueba
+  Serial.println("Aspiradora iniciada");
   return true;
 }
 
@@ -116,6 +125,8 @@ void loop() {
             char c = client.read();
             message += c;
         }
+        message.trim();
+        message.toUpperCase();
 
         Serial.println("Mensaje recibido: " + message);
 
