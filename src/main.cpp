@@ -6,6 +6,7 @@
 
 String ssid = "";
 String password = ""; 
+String ip = "";
 
 WiFiServer server(7777); 
 
@@ -108,7 +109,8 @@ void setup() {
 
     Serial.println("Conectado a la red Wi-Fi");
     Serial.print("Dirección IP: ");
-    Serial.println(WiFi.localIP());
+    ip = WiFi.localIP().toString();
+    Serial.println(ip);
     server.begin();
     Serial.println("Esperando conexión...");
 }
@@ -165,6 +167,13 @@ void loop() {
                 Serial.println("T");
               }
         }
+
+        // Comando para obtener ip
+        if (message == "G") {
+          client.println(ip);
+          Serial.println(ip);
+        }
+        
 
         // Comando para actualizar el SSID y la contraseña (formato: "W:SSID:CONTRASEÑA")
         if (message.startsWith("W:")) {
