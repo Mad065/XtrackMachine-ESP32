@@ -1,12 +1,17 @@
 #include <Arduino.h>
 #include <EEPROM.h>
-
-
 #include <WiFi.h>
 
 String ssid = "";
 String password = ""; 
 String ip = "";
+
+// boton para detener
+int button_detener = 0;
+// boton para iniciar
+int button_iniciar = 1;
+// boton para reiniciar
+int button_reiniciar = 2;
 
 WiFiServer server(7777); 
 
@@ -19,7 +24,8 @@ enum Estado {
     ERROR = 'X'
 };
 
-Estado estadoActual = SUCIO; // Estado inicial
+// Estado inicial
+Estado estadoActual = SUCIO;
 
 // Guardar datos de red en la memoria
 void guardarCredenciales(String ssid, String password) {
@@ -30,7 +36,7 @@ void guardarCredenciales(String ssid, String password) {
   EEPROM.end();
 }
 
-
+// Cargar credenciales de red de la memoria
 void cargarCredenciales() {
   EEPROM.begin(512);
   EEPROM.get(0, ssid);
@@ -38,24 +44,24 @@ void cargarCredenciales() {
   EEPROM.end();
 }
 
-// Función para cambiar el estado (ejemplo, se puede modificar según lógica)
+// Cambiar el estado (ejemplo, se puede modificar según lógica)
 void cambiarEstado(Estado nuevoEstado) {
     estadoActual = nuevoEstado;
     Serial.print("Estado cambiado a: ");
     Serial.println((char)estadoActual);
 }
 
-// Función que devuelve el estado actual como un carácter
+// Obtener el estado actual como un carácter
 char obtenerEstado() {
     return (char)estadoActual;
 }
 
 void obtenerEstadoActual() {
-  // Comprobar los estados posibles con sensores etc
+  // TODO Comprobar los estados posibles con sensores etc
 }
 
 bool detener() {
-  // Detener el proceso de limpieza
+  // TODO Detener el proceso de limpieza
 
   //Prueba
   Serial.println("Aspiradora detenida");
@@ -63,7 +69,7 @@ bool detener() {
 }
 
 bool reiniciar() {
-  // Reiniciar el proceso
+  // TODO Reiniciar el proceso de limpieza
 
   //Prueba
   Serial.println("Aspiradora reiniciada");
@@ -71,13 +77,14 @@ bool reiniciar() {
 }
 
 bool iniciar() {
-  // Iniciar el proceso
+  // TODO Iniciar el proceso de limpieza
 
   //Prueba
   Serial.println("Aspiradora iniciada");
   return true;
 }
 
+// Reconectar al wifi con credenciales actualizadas
 void actualizarWiFi(String nuevoSSID, String nuevaPassword) {
   ssid = nuevoSSID;
   password = nuevaPassword;
@@ -97,103 +104,144 @@ void actualizarWiFi(String nuevoSSID, String nuevaPassword) {
   Serial.println(WiFi.localIP());
 }
 
-void setup() {
-    Serial.begin(115200);
-    WiFi.begin(ssid, password);
+// Conectar a la red Wi-Fi
+void conectarWiFi() {
+  // Conectar a la red Wi-Fi
+  WiFi.begin(ssid, password);
 
-    Serial.println("Conectando a la red Wi-Fi...");
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(1000);
-        Serial.println("Conectando a Wi-Fi...");
-    }
+  Serial.println("Conectando a la red Wi-Fi...");
+  while (WiFi.status() != WL_CONNECTED) {
+      delay(1000);
+      Serial.println("Conectando a Wi-Fi...");
+  }
 
-    Serial.println("Conectado a la red Wi-Fi");
-    Serial.print("Dirección IP: ");
-    ip = WiFi.localIP().toString();
-    Serial.println(ip);
-    server.begin();
-    Serial.println("Esperando conexión...");
+  Serial.println("Conectado a la red Wi-Fi");
+  Serial.print("Dirección IP: ");
+  ip = WiFi.localIP().toString();
+  Serial.println(ip);
+  server.begin();
+  Serial.println("Esperando conexión...");
 }
 
-void loop() {
-    obtenerEstadoActual();
+// Configurar pines
+void configPins() {
+  pinMode(button_detener, INPUT);
+    pinMode(button_iniciar
+    , INPUT);
+}
 
-    WiFiClient client = server.available();
-    if (client) {
-        Serial.println("Cliente conectado");
-        String message = "";
+// Comando de control de la aspiradora mediante WiFi
+void recibirComandos() {
+  WiFiClient client = server.available();
+  if (client) {
+    Serial.println("Cliente conectado");
+    String message = "";
 
-        while (client.available()) {
-            char c = client.read();
-            message += c;
+    while (client.available()) {
+        char c = client.read();
+        message += c;
+    }
+    message.trim();
+    message.toUpperCase();
+
+    Serial.println("Mensaje recibido: " + message);
+
+    // Comando para actualizar estado de la aspiradora
+    if (message == "U") {
+        char estado = obtenerEstado();
+        client.println(estado);
+        Serial.print("Estado enviado: ");
+        Serial.println(estado);
+    }
+
+    // Comando para detener la aspiradora
+    if (message == "S") {
+      if (detener())
+      {
+        client.println("T");
+        Serial.println("T");
+      }
+    }
+
+    // Comando para reiniciar la aspiradora
+    if (message == "R") {
+      if (reiniciar())
+        {
+          client.println("T");
+          Serial.println("T");
         }
-        message.trim();
-        message.toUpperCase();
 
-        Serial.println("Mensaje recibido: " + message);
+    }
 
-        // Comando para actualizar estado de la aspiradora
-        if (message == "U") {
-            char estado = obtenerEstado();
-            client.println(estado);
-            Serial.print("Estado enviado: ");
-            Serial.println(estado);
-        }
-
-        // Comando para detener la aspiradora
-        if (message == "S") {
-          if (detener())
+    // Comando para iniciar la aspiradora
+    if (message == "I") {
+      if (iniciar())
           {
             client.println("T");
             Serial.println("T");
           }
-        }
-
-        // Comando para reiniciar la aspiradora
-        if (message == "R") {
-          if (reiniciar())
-            {
-              client.println("T");
-              Serial.println("T");
-            }
-
-        }
-
-        // Comando para iniciar la aspiradora
-        if (message == "I") {
-          if (iniciar())
-              {
-                client.println("T");
-                Serial.println("T");
-              }
-        }
-
-        // Comando para obtener ip
-        if (message == "G") {
-          client.println(ip);
-          Serial.println(ip);
-        }
-        
-
-        // Comando para actualizar el SSID y la contraseña (formato: "W:SSID:CONTRASEÑA")
-        if (message.startsWith("W:")) {
-          int separatorIndex1 = message.indexOf(':', 2); // Buscar el primer separador
-          int separatorIndex2 = message.indexOf(':', separatorIndex1 + 1); // Buscar el segundo separador
-
-          if (separatorIndex1 != -1 && separatorIndex2 != -1) {
-              String nuevoSSID = message.substring(2, separatorIndex1);
-              String nuevaPassword = message.substring(separatorIndex1 + 1);
-
-              actualizarWiFi(nuevoSSID, nuevaPassword);
-              client.println("T"); // Confirmar que se actualizó
-              Serial.println("SSID y contraseña actualizados");
-          } else {
-              client.println("F"); // Formato incorrecto
-              Serial.println("Formato incorrecto para actualizar WiFi");
-          }
-      }
-        
-        client.stop();
-        Serial.println("Cliente desconectado");
     }
+
+    // Comando para obtener ip
+    if (message == "G") {
+      client.println(ip);
+      Serial.println(ip);
+    }
+    
+
+    // Comando para actualizar el SSID y la contraseña (formato: "W:SSID:CONTRASEÑA")
+    if (message.startsWith("W:")) {
+      int separatorIndex1 = message.indexOf(':', 2); // Buscar el primer separador
+      int separatorIndex2 = message.indexOf(':', separatorIndex1 + 1); // Buscar el segundo separador
+
+      if (separatorIndex1 != -1 && separatorIndex2 != -1) {
+          String nuevoSSID = message.substring(2, separatorIndex1);
+          String nuevaPassword = message.substring(separatorIndex1 + 1);
+
+          actualizarWiFi(nuevoSSID, nuevaPassword);
+          client.println("T"); // Confirmar que se actualizó
+          Serial.println("SSID y contraseña actualizados");
+      } else {
+          client.println("F"); // Formato incorrecto
+          Serial.println("Formato incorrecto para actualizar WiFi");
+      }
+    } 
+    
+    client.stop();
+    Serial.println("Cliente desconectado");
+  }
+}
+
+void setup() {
+    Serial.begin(115200);
+
+    conectarWiFi();
+
+    configPins();
+}
+
+
+void loop() {
+  // Iniciar proceso de limpieza manualmente
+  if (digitalRead(button_iniciar) == 1)
+  {
+    iniciar();
+  }
+
+  // Detener proceso de limpieza manualmente
+  if (digitalRead(button_detener) == 1)
+  {
+    detener();
+  }
+
+  // Reiniciar proceso de limpieza manualmente
+  if (digitalRead(button_reiniciar) == 1)
+  {
+    detener();
+  }
+  
+    obtenerEstadoActual();
+
+    recibirComandos();
+    
 }
