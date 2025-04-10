@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <Stepper.h>
 #include <EEPROM.h>
 #include <WiFi.h>
 
@@ -12,6 +13,12 @@ int button_detener = 0;
 int button_iniciar = 1;
 // boton para reiniciar
 int button_reiniciar = 2;
+
+// Motor paso a paso
+int pines_motor[] = {1, 2, 3, 4};
+int steps_per_revolution = 0;
+int speed = 0;
+Stepper motor(steps_per_revolution, pines_motor[0], pines_motor[1], pines_motor[2], pines_motor[3]);
 
 WiFiServer server(7777); 
 
@@ -218,6 +225,9 @@ void setup() {
     conectarWiFi();
 
     configPins();
+
+    // Setup stepper
+    motor.setSpeed(speed);
 }
 
 
@@ -239,6 +249,9 @@ void loop() {
   {
     detener();
   }
+
+  // Movimiento del stepper
+  // motor.step(steps_per_revolution);
   
     obtenerEstadoActual();
 
