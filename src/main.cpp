@@ -18,6 +18,7 @@ int button_reiniciar = 2;
 int pines_motor[] = {1, 2, 3, 4};
 int steps_per_revolution = 0;
 int speed = 0;
+int position = 0;
 Stepper motor(steps_per_revolution, pines_motor[0], pines_motor[1], pines_motor[2], pines_motor[3]);
 
 WiFiServer server(7777); 
@@ -219,6 +220,11 @@ void recibirComandos() {
   }
 }
 
+void moverMotor(int steps) {
+  position += steps;
+  motor.step(steps);
+}
+
 void setup() {
     Serial.begin(115200);
 
@@ -229,7 +235,6 @@ void setup() {
     // Setup stepper
     motor.setSpeed(speed);
 }
-
 
 void loop() {
   // Iniciar proceso de limpieza manualmente
@@ -249,9 +254,6 @@ void loop() {
   {
     detener();
   }
-
-  // Movimiento del stepper
-  // motor.step(steps_per_revolution);
   
     obtenerEstadoActual();
 
